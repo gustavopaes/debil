@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>debil</title>
+
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+  <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <style type="text/css">
+  h1 {
+    padding-left: 2em;
+    border-bottom: 2px solid #ccc;
+    line-height: 50px;
+  }
+  </style>
+</head>
+<body>
+
+  <h1>debil</h1>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-6">
+        <div id="chart_network"></div>
+      </div>
+      <div class="col-md-6">
+        <div id="chart_opcounters"></div>
+      </div>
+      <div class="col-md-6">
+        <div id="chart_connections"></div>
+      </div>
+      <div class="col-md-6">
+        <div id="chart_documentMetrics"></div>
+      </div>
+      <div class="col-md-6">
+        <div id="chart_mem"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    google.charts.load('current', {'packages':['corechart']});
+    google.charts.setOnLoadCallback(loadData);
+
+    var points = {
+      'network': {
+        'chart': null,
+        'labels': {
+          'title': 'Network',
+          'vAxis': 'Bytes',
+          'hAxis': 'Date'
+        },
+        'values': {
+          'bytesIn': 'Bytes In',
+          'bytesOut': 'Bytes Out',
+          'numRequests': 'Number requests',
+          //'physicalBytesIn': 'physicalBytesIn',
+          //'physicalBytesOut': 'physicalBytesOut'
+        },
+        'data': []
+      },
+      'opcounters': {
+        'chart': null,
+        'labels': {
+          'title': 'Operation counters',
+          'vAxis': 'Count',
+          'hAxis': 'Date'
+        },
+        'values': {
+          'command': 'Command',
+          'delete': 'Delete',
+          'getmore': 'Get more',
+          'insert': 'Insert',
+          'query': 'Query',
+          'update': 'Update'
+        },
+        'data': []
+      },
+      'connections': {
+        'chart': null,
+        'labels': {
+          'title': 'Connections',
+          'vAxis': 'Count',
+          'hAxis': 'Date'
+        },
+        'values': {
+          'current': 'Current'
+        },
+        'data': []
+      },
+      'mem': {
+        'chart': null,
+        'labels': {
+          'title': 'Memory',
+          'vAxis': 'Megabytes',
+          'hAxis': 'Date'
+        },
+        'values': {
+          'resident': 'currently used by the database process',
+          'virtual': 'virtual memory used by the mongod process'
+        },
+        'data': []
+      },
+      'documentMetrics': {
+        'chart': null,
+        'labels': {
+          'title': 'Document metrics',
+          'vAxis': 'Count',
+          'hAxis': 'Date'
+        },
+        'values': {
+          'deleted': 'Deleted',
+          'inserted': 'Inserted',
+          'returned': 'Returned',
+          'updated': 'Updated'
+        },
+        'data': []
+      }
+    };
+
+    function loadData() {
+      jQuery.getJSON('./api', function(data) {
+        Object.keys(points).forEach(function(prop) {
+          points[prop].data = data.history.map(function(point) {
+            let pointData = [new Date(point.date)];
+
+            Object.keys(points[prop].values).forEach(function(valueAttr) {
+              pointData.push(point[prop][valueAttr]);
+            });
+
+            return pointData;
+          });
+
+          drawChart(points[prop], prop);
+        });
+
+        setTimeout(loadData, 1000);
+      });
+    }
+
+    function drawChart(points, area) {
+      var data = new google.visualization.DataTable();
+
+      data.addColumn('datetime', 'Date');
+
+      Object.keys(points.values).forEach(function(prop) {
+        data.addColumn('number', points.values[prop]);
+      });
+
+      data.addRows(points.data);
+
+      var options = {
+        title: points.labels.title,
+        hAxis: {
+          title: points.labels.hAxis,
+          format: 'mm:s'
+          //ticks: points.data.map(function(p) { return p[0]; })
+        },
+        vAxis: {
+          title: points.labels.vAxis
+        },
+        curveType: 'function',
+        legend: {
+          position: 'top'
+        }
+      };
+
+      if(!points.chart) {
+        points.chart = new google.visualization.LineChart(document.getElementById('chart_' + area))
+      }
+
+      points.chart.clearChart();
+      points.chart.draw(data, options);
+    }
+  </script>
+
+</body>
+</html>
